@@ -20,8 +20,6 @@ import org.apache.log4j.MDC;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.aerospike.client.AerospikeClient;
-
 /**
  * Integration tests for {@link AerospikeLog4jAppender}.
  * 
@@ -32,15 +30,11 @@ public class AerospikeLog4jAppenderIntegrationTests {
 	static final String NAME = AerospikeLog4jAppenderIntegrationTests.class.getName();
 
 	Logger log = Logger.getLogger(NAME);
-	AerospikeClient client;
-	String namespace;
-	String set;
 	
 
 	@Before
 	public void setUp() throws Exception {
 
-		this.client = new AerospikeClient("localhost", 3000);
 
 	}
 

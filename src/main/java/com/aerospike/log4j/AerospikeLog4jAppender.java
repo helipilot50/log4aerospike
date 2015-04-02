@@ -154,21 +154,21 @@ public class AerospikeLog4jAppender extends AppenderSkeleton {
 				throw new RuntimeException(e.getMessage(), e);
 			}
 		}
+		List<Bin> binList = new ArrayList<Bin>();
 		StringBuilder keyString = new StringBuilder();
-		Map<String, Object> entryMap = new HashMap<String, Object>();
 		if (null != applicationId) {
-			entryMap.put(APP_ID, applicationId);
 			MDC.put(APP_ID, applicationId);
 			keyString.append(applicationId).append(":");
+			binList.add(new Bin(APP_ID, applicationId));
 		}
 		String eventName = event.getLogger().getName();
-		entryMap.put(NAME, eventName);
+		binList.add(new Bin(NAME, eventName));
 		keyString.append(eventName).append(":");
-		entryMap.put(LEVEL, event.getLevel().toString());
+		binList.add(new Bin(LEVEL, event.getLevel().toString()));
 		keyString.append(event.getLevel().toString()).append(":");
 		Calendar tstamp = Calendar.getInstance();
 		tstamp.setTimeInMillis(event.getTimeStamp());
-		entryMap.put(TIMESTAMP, event.getTimeStamp());
+		binList.add(new Bin(TIMESTAMP, event.getTimeStamp()));
 		keyString.append(event.getTimeStamp());
 		
 		// Copy properties into document
@@ -178,7 +178,7 @@ public class AerospikeLog4jAppender extends AppenderSkeleton {
 			for (Map.Entry<Object, Object> entry : props.entrySet()) {
 				propsMap.put(entry.getKey().toString(), entry.getValue().toString());
 			}
-			entryMap.put(PROPERTIES, propsMap);
+			binList.add(new Bin(PROPERTIES, propsMap));
 		}
 
 		// Copy traceback info (if there is any) into the document
@@ -186,11 +186,11 @@ public class AerospikeLog4jAppender extends AppenderSkeleton {
 		if (null != traceback && traceback.length > 0) {
 			List<String> tb = new ArrayList<String>();
 			tb.addAll(Arrays.asList(traceback));
-			entryMap.put(TRACEBACK, tb);
+			binList.add(new Bin(TRACEBACK, tb));
 		}
 
 		// Put the rendered message into the document
-		entryMap.put(MESSAGE, event.getRenderedMessage());
+		binList.add(new Bin(MESSAGE, event.getRenderedMessage()));
 
 		// Insert the document
 		Calendar now = Calendar.getInstance();
@@ -207,7 +207,7 @@ public class AerospikeLog4jAppender extends AppenderSkeleton {
 			MDC.remove(APP_ID);
 		}
 		Key key = new Key(this.namespace, this.set, keyString.toString());
-		this.client.put(null, key, new Bin(this.bin, Value.getAsMap(entryMap)));
+		this.client.put(null, key, binList.toArray(new Bin[0]));
 	}
 
 	/*

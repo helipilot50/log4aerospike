@@ -1,4 +1,6 @@
-#log4aerospike
+# log4aerospike
+
+Log4Aerospike is a log4j appender which allows log messages to be stored in an Aerospike NoSQL database
 
 ##Problem
 
