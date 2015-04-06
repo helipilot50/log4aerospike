@@ -31,7 +31,6 @@ import org.apache.log4j.spi.LoggingEvent;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.Value;
 
 
 /**
@@ -61,7 +60,7 @@ public class AerospikeLog4jAppender extends AppenderSkeleton {
 	protected PatternLayout collectionLayout = new PatternLayout(collectionPattern);
 	protected String applicationId = System.getProperty("APPLICATION_ID", null);
 	protected AerospikeClient client;
-	protected  String bin = "log-entry";
+	protected int TTL = 30 * 24 * 60 * 60; // Number of seconds in 30 Days
 
 	public AerospikeLog4jAppender() {
 	}
@@ -102,12 +101,15 @@ public class AerospikeLog4jAppender extends AppenderSkeleton {
 		this.set = set;
 	}
 
-	public String getBin() {
-		return bin;
+	public int getTTL() {
+		return TTL;
 	}
 
-	public void setBin(String bin) {
-		this.bin = bin;
+	public void setTTL(int tTL) {
+		TTL = tTL;
+		if (this.client != null && this.client.isConnected()){
+			this.client.writePolicyDefault.expiration = this.TTL;
+		}
 	}
 
 	public String getCollectionPattern() {
@@ -136,8 +138,10 @@ public class AerospikeLog4jAppender extends AppenderSkeleton {
 	}
 
 	protected void connectToAerospike() throws UnknownHostException {
-		if (this.client == null || !this.client.isConnected())
+		if (this.client == null || !this.client.isConnected()){
 			this.client = new AerospikeClient(host, port);
+			this.client.writePolicyDefault.expiration = this.TTL;
+		}
 	}
 
 	/*
@@ -171,7 +175,7 @@ public class AerospikeLog4jAppender extends AppenderSkeleton {
 		binList.add(new Bin(TIMESTAMP, event.getTimeStamp()));
 		keyString.append(event.getTimeStamp());
 		
-		// Copy properties into document
+		// Copy properties into the record
 		Map<Object, Object> props = event.getProperties();
 		if (null != props && props.size() > 0) {
 			Map<String, String> propsMap = new HashMap<String, String>();
@@ -181,7 +185,7 @@ public class AerospikeLog4jAppender extends AppenderSkeleton {
 			binList.add(new Bin(PROPERTIES, propsMap));
 		}
 
-		// Copy traceback info (if there is any) into the document
+		// Copy traceback info (if there is any) into the record
 		String[] traceback = event.getThrowableStrRep();
 		if (null != traceback && traceback.length > 0) {
 			List<String> tb = new ArrayList<String>();
@@ -189,10 +193,10 @@ public class AerospikeLog4jAppender extends AppenderSkeleton {
 			binList.add(new Bin(TRACEBACK, tb));
 		}
 
-		// Put the rendered message into the document
+		// Put the rendered message into the record
 		binList.add(new Bin(MESSAGE, event.getRenderedMessage()));
 
-		// Insert the document
+		// Insert a record
 		Calendar now = Calendar.getInstance();
 		MDC.put(YEAR, now.get(Calendar.YEAR));
 		MDC.put(MONTH, String.format("%1$02d", now.get(Calendar.MONTH) + 1));
@@ -215,7 +219,6 @@ public class AerospikeLog4jAppender extends AppenderSkeleton {
 	 * @see org.apache.log4j.AppenderSkeleton#close()
 	 */
 	public void close() {
-
 		if (this.client != null) {
 			this.client.close();
 		}
